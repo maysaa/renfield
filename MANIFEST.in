@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include renfield *.css
+recursive-include renfield *.csv
+recursive-include renfield *.html
+recursive-include renfield *.ico
+recursive-include renfield *.js
+recursive-include renfield *.json
+recursive-include renfield *.md
+recursive-include renfield *.png
+recursive-include renfield *.py
+recursive-include renfield *.svg
+recursive-include renfield *.txt
+recursive-exclude renfield *.pyc
