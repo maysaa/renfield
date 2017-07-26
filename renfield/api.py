@@ -96,7 +96,7 @@ def submit_stock_entry(serial_no):
 	if serialno_table:
 		status = serialno_table.vehicle_status
 		if serialno_table.vehicle_status == abndstatus:
-			new_status = "Delivered"
+			new_status = abndstatus
 	
 	record = frappe.get_doc("Stock Entry", records[0][0])
 	if record:
@@ -328,26 +328,36 @@ def send_IBNR_mail(emailadd=[]):
 	subject = "Invoiced but not received list"
 	submessage = ""
 	input1 = "Invoiced but not Received"
-	tableheadings = """<table border ="0">
+	tableheadings = """<table border ="1">
+			   <col width = "50">
+			   <col width = "120">
+			   <col width = "120">
 			   <tr>
+			   <th>S.No</th>
 			   <th>Serial No</th>
 			   <th>Item Code</th>
 			   </tr>
 			   </table> """.encode('ascii')
 	submessage = submessage+tableheadings
 	items = frappe.db.sql("""SELECT sn.serial_no, sn.item_code FROM `tabSerial No` sn WHERE sn.vehicle_status=%(string1)s""",{'string1':input1})
+	i = 1
 	
 	for row in items:
 	
 		serial_no = row[0].encode('ascii')
 		item_code = row[1].encode('ascii')
 		
-		emailmsg = """<table border ="0">
+		emailmsg = """<table border ="1">
+			      <col width="50">
+				<col width = "120">
+				<col width = "120">
 				<tr>
+				<td>{SlNo}</td>
 				<td>{serialNo}</td>
 				<td>{itemCode}</td>
 				</tr>
-				</table>""".format(serialNo=serial_no,itemCode=item_code).encode('ascii')
+				</table>""".format(SlNo=i,serialNo=serial_no,itemCode=item_code).encode('ascii')
+		i = i+1
 	
 		submessage = submessage+emailmsg
 	message = """<p>
@@ -447,4 +457,20 @@ def make_new_serial_no_entry(serial_no,item_code,delivery_req_at,delivery_req_on
 	doc.save()
 	frappe.db.commit()
 	return doc.name
+
+@frappe.whitelist()
+def submit_deliver_vehicle_stock_entry(serial_no):
+	
+	new_status = "Delivered"
+	records = frappe.db.sql("""select sd.parent from `tabStock Entry Detail` sd, `tabStock Entry` se where sd.serial_no = %s and se.docstatus = 0 and sd.parent = se.name""", (serial_no))
+	
+	record = frappe.get_doc("Stock Entry", records[0][0])
+	if record:
+		name = record.name
+		frappe.db.sql("""update `tabSerial No` sn set vehicle_status = %(string1)s where sn.name = (select se.serial_no from `tabStock Entry Detail` se where se.parent = %(string2)s)""", {'string1': new_status, 'string2': name})
+		
+		record.submit()
+		frappe.db.commit()
+		returnmsg = """Submitted the stock entry {stockentryname} successfully!""".format(stockentryname=record.name).encode('ascii')
+		return returnmsg
 
