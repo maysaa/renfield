@@ -83,7 +83,8 @@ def make_stock_entry(serial_no,destination_warehouse):
 	doc.update(newJson)
 	doc.save()
 	frappe.db.commit()
-	return doc.name
+	docname = doc.name
+	return """Stock entry {sle} created for vehicle with serial no {sln}""".format(sle = docname, sln = serial_no).encode('ascii')
 
 @frappe.whitelist()
 def submit_stock_entry(serial_no):
@@ -98,15 +99,20 @@ def submit_stock_entry(serial_no):
 		if serialno_table.vehicle_status == abndstatus:
 			new_status = abndstatus
 	
-	record = frappe.get_doc("Stock Entry", records[0][0])
-	if record:
-		name = record.name
-		frappe.db.sql("""update `tabSerial No` sn set vehicle_status = %(string1)s where sn.name = (select se.serial_no from `tabStock Entry Detail` se where se.parent = %(string2)s)""", {'string1': new_status, 'string2': name})
+	for r in records:
 		
-		record.submit()
-		frappe.db.commit()
-		returnmsg = """Submitted the stock entry {stockentryname} successfully!""".format(stockentryname=record.name).encode('ascii')
-		return returnmsg
+		record = frappe.get_doc("Stock Entry", r[0])
+		if record:
+			name = record.name
+			frappe.db.sql("""update `tabSerial No` sn set vehicle_status = %(string1)s where sn.name = (select se.serial_no from `tabStock Entry Detail` se where se.parent = %(string2)s)""", {'string1': new_status, 'string2': name})
+		
+			record.submit()
+			frappe.db.commit()
+			returnmsg = """Submitted the stock entry {stockentryname} for vehicle {sln} successfully!""".format(stockentryname=record.name, sln=serial_no).encode('ascii')
+		else:
+			returnmsg = """Could not find the stock entry for vehicle {sln} in the draft state to submit!""".format(sln=serial_no).encode('ascii')
+		
+	return returnmsg
 
 @frappe.whitelist()
 def cancel_stock_entry(serial_no):
@@ -172,8 +178,9 @@ def make_movement_stock_entry(serial_no,source_warehouse):
 	doc = frappe.new_doc("Stock Entry")
 	doc.update(newJson)
 	doc.save()
+	docname = doc.name
 	frappe.db.commit()
-	return doc.name
+	return """Stock entry {ste} created for vehicle {sln}""".format(ste=docname,sln=serial_no).encode('ascii')
 
 @frappe.whitelist()
 def make_unloadvehicle_stock_entry(serial_no,destination_warehouse):
@@ -233,8 +240,9 @@ def make_unloadvehicle_stock_entry(serial_no,destination_warehouse):
 	doc = frappe.new_doc("Stock Entry")
 	doc.update(newJson)
 	doc.save()
+	docname = doc.name
 	frappe.db.commit()
-	return doc.name
+	return """Stock entry {sle} is created for vehicle with serial no {sln}""".format(sle=docname,sln=serial_no).encode('ascii')
 
 #to make delivery note and submit it
 
@@ -370,20 +378,6 @@ def send_IBNR_mail(emailadd=[]):
 	frappe.sendmail(recipients=emailadd, sender=sender, subject=subject,message=message, delayed=False)
 	return emailadd
 
-@frappe.whitelist()
-def change_status(serial_no):
-
-	record = frappe.get_doc("Serial No", serial_no)
-	if record:	
-		veh_status = record.vehicle_status
-	if veh_status == "Received but not Allocated":
-		record.vehicle_status = "Allocated but not Delivered"
-		record.save()
-		frappe.db.commit()
-		msg = """Changed the status to Allocated but not Delivered for vehicle {vehicle}""".format(vehicle=serial_no).encode('ascii')
-		return msg
-	else:
-		return 'The vehicle status is not Received but not Allocated, exiting without making any status change'
 
 @frappe.whitelist()
 def make_delivervehicle_stock_entry(serial_no,source_warehouse):
@@ -440,15 +434,13 @@ def make_delivervehicle_stock_entry(serial_no,source_warehouse):
 	return doc.name
 
 @frappe.whitelist()
-def make_new_serial_no_entry(serial_no,item_code,delivery_req_at,delivery_req_on):
+def make_new_serial_no_entry(serial_no,item_code):
 	
 	newJson = {
 		"serial_no": serial_no,
 		"doctype": "Serial No",
 		"item_code": item_code,
-		"vehicle_status": "Invoiced but not Received",
-		"delivery_required_at": delivery_req_at,
-		"delivery_required_on": delivery_req_on,
+		"vehicle_status": "Invoiced but not Received"		
 	}
 
 	
@@ -474,3 +466,125 @@ def submit_deliver_vehicle_stock_entry(serial_no):
 		returnmsg = """Submitted the stock entry {stockentryname} successfully!""".format(stockentryname=record.name).encode('ascii')
 		return returnmsg
 
+@frappe.whitelist()
+def make_sales_invoice(serial_no):
+
+	from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice	
+	serialNoDoc = frappe.get_doc("Serial No", serial_no)
+	if serialNoDoc:
+		brn = serialNoDoc.booking_reference_number
+		itemCode = serialNoDoc.item_code
+		if itemCode:
+			item_record = frappe.get_doc("Item", itemCode)
+		
+		record = frappe.db.sql("""select so.name from `tabSales Order` so where so.booking_reference_number = %s and so.docstatus = 1""", (brn))
+		if record:
+			salesorder = frappe.get_doc("Sales Order", record[0][0])
+			if salesorder:
+				salesinvoice = make_sales_invoice(salesorder.name)
+				#salesinvoice.posting_date = frappe.utils.datetime.nowdate()
+				salesinvoice.update_stock = True
+				for itemrecords in salesinvoice.items:
+					if itemrecords.item_code == itemCode:
+						itemrecords.serial_no = serial_no
+						itemrecords.warehouse = serialNoDoc.warehouse
+						itemrecords.allow_zero_valuation_rate = True
+						salesinvoice.insert()
+						salesinvoice.save()
+						#salesinvoice.submit()     #submit in the submit_sales_invoice methd
+						frappe.db.commit()
+						return 'sales invoice '+salesinvoice.name+' created for sales order '+salesorder.name+' with booking reference number '+brn
+				
+			else:
+				return 'Couldnt find the matching salesorder that is ready to be billed'
+		else:
+			return 'The sales order for this vehicle doesnt exist'
+	else:
+		msg = """The vehicle with the serial no {sln} does not exist on ERPNext""".format(sln = serial_no).encode('ascii')		
+		return msg
+
+@frappe.whitelist()
+def change_status(serial_no, brn):
+
+	current_item_code = ""	
+	currentrecord = frappe.get_doc("Serial No", serial_no)
+	if currentrecord:
+		current_item_code = currentrecord.item_code	
+		alreadyexistingrecord = frappe.db.sql("""select sn.name from `tabSerial No` sn where sn.booking_reference_number = %s and sn.vehicle_status = "Allocated but not Delivered" """,(brn))
+		if alreadyexistingrecord:
+			existingserialno = frappe.get_doc("Serial No", alreadyexistingrecord[0][0])
+			item_code = existingserialno.item_code
+			if existingserialno:
+				existingserialno.booking_reference_number = ""
+				existingserialno.vehicle_status = "Received but not Allocated"	#roll back the previous serial no with the brn
+				existingserialno.save()
+				
+		currentrecord.booking_reference_number = brn
+		currentrecord.vehicle_status = "Allocated but not Delivered"
+		currentrecord.save()
+		frappe.db.commit()
+		msg = """Changed the status to Allocated but not Delivered for vehicle {vehicle} with booking reference number {bookrefno}""".format(vehicle=serial_no,bookrefno=brn).encode('ascii')
+	else:
+		msg = """"Could not find vehicle with serial no {vehicle} on ERPNext """.format(vehicle=serial_no).encode('ascii')
+	return msg
+
+@frappe.whitelist()
+def allocate_vehicle(serial_no, brn):
+
+	returnval = 0
+	salesorder_record = frappe.db.sql("""select so.name from `tabSales Order` so where so.booking_reference_number = %(bookingrefno)s """,{'bookingrefno': brn})
+	if not salesorder_record:
+		returnval = -1
+			
+	if salesorder_record :
+		serialno_record = frappe.get_doc("Serial No", serial_no)
+		if serialno_record :
+			item_code = serialno_record.item_code
+			vehicle_status = serialno_record.vehicle_status
+			record = frappe.db.sql("""select sd.parent from `tabSales Order Item` sd, `tabSales Order` se where sd.parent = se.name and sd.item_code = %(string1)s and se.booking_reference_number = %(string2)s""", {'string1': item_code, 'string2': brn })
+			if record:
+				if vehicle_status == "Received but not Allocated":				
+					returnval = 1	#Sucess, all conditions are met
+					#Check if there is another serial no allocated to this BRN
+					alreadyexisitngserialno = frappe.db.sql("""select sn.name from `tabSerial No` sn where sn.booking_reference_number = %s""", brn)
+					if alreadyexisitngserialno:
+						return 2 #there already exists a serial no with this booking reference number
+				else:
+					if vehicle_status == "Allocated but not Delivered":
+						returnval = -2	#Status is not RBNA, it is ABND, roll back previous allocation
+					elif vehicle_status == "Invoiced but not Received":
+						returnval = -5
+					else:
+						returnval = -6
+			
+			else:
+				if vehicle_status == "Received but not Allocated":				
+					returnval = -3	#Only item code not match
+				else:
+					returnval = -4	#Both item code and status doesnt match
+				
+	
+	return returnval
+
+@frappe.whitelist()
+def submit_sales_invoice(serial_no):
+
+	recordfoundandsubmitted = False	
+	returnmsg = ""
+	records = frappe.db.sql("""select sd.parent from `tabSales Invoice Item` sd, `tabSales Invoice` se where sd.serial_no = %s and se.docstatus = 0 and sd.parent = se.name""", (serial_no))
+	
+	for r in records:
+		
+		record = frappe.get_doc("Sales Invoice", r[0])
+		if record:
+		
+			frappe.db.sql("""update `tabSerial No` sn set vehicle_status = 'Delivered' where sn.name = (select se.serial_no from `tabSales Invoice Item` se where se.parent = %s)""", (record.name))
+		
+			record.submit()
+			recordfoundandsubmitted = True
+			frappe.db.commit()
+	if recordfoundandsubmitted:
+		returnmsg = """Sales Invoice submitted for the vehicle with Serial No {sln}""".format(sln=serial_no).encode('ascii')
+	else:
+		returnmsg = """Sales Invoice for the vehicle with Serial No {sln} could not be found and submitted""".format(sln=serial_no).encode('ascii')
+	return returnmsg
