@@ -9451,40 +9451,7 @@
   "property_type": null, 
   "value": "389"
  }, 
- {
-  "_assign": null, 
-  "_comments": null, 
-  "_liked_by": null, 
-  "_user_tags": null, 
-  "default_value": null, 
-  "doc_type": "Material Request Item", 
-  "docstatus": 0, 
-  "doctype": "Property Setter", 
-  "doctype_or_field": "DocField", 
-  "field_name": "item_code", 
-  "modified": "2017-03-22 11:22:46.043470", 
-  "name": "Material Request Item-item_code-width", 
-  "property": "width", 
-  "property_type": null, 
-  "value": "154"
- }, 
- {
-  "_assign": null, 
-  "_comments": null, 
-  "_liked_by": null, 
-  "_user_tags": null, 
-  "default_value": null, 
-  "doc_type": "Material Request Item", 
-  "docstatus": 0, 
-  "doctype": "Property Setter", 
-  "doctype_or_field": "DocField", 
-  "field_name": "description", 
-  "modified": "2017-03-22 12:02:29.888322", 
-  "name": "Material Request Item-description-width", 
-  "property": "width", 
-  "property_type": null, 
-  "value": "194"
- }, 
+ 
  {
   "_assign": null, 
   "_comments": null, 
