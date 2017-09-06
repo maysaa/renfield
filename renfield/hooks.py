@@ -10,6 +10,11 @@ app_icon = "octicon octicon-file-directory"
 app_color = "grey"
 app_email = "umag@epochconsulting.in"
 app_license = "MIT"
+fixtures = ["Custom Field",
+"Property Setter",
+"Custom Script",
+"Report",
+"Print Format"]
 
 # Includes in <head>
 # ------------------
