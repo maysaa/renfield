@@ -1,0 +1,38 @@
+<h2 class="text-center">{%= __("QR Codes") %}</h2>
+<h5 class="text-center">
+	{%= dateutil.str_to_user(filters.creation) %}
+	
+</h5>
+<hr>
+<table class="no-border">
+	
+	<tbody>
+		{% for(var i=0, l=data.length; i<l; i++) { %}
+			<tr>
+				<td>   
+					
+					<img src={%=data[i][__("Serial_QR_Code")]%} width = "78.59px" height = "75.59px">
+							
+					
+					<br>{%= data[i][__("Serial Number")] %}
+					<br>{%= data[i][__("Item Code")] %}
+					<br>
+					<br></td>
+				<td>
+					<img src={%=data[i][__("Serial_QR_Code")]%} width = "78.59px" height = "75.59px">					
+					<br>{%= data[i][__("Serial Number")] %}
+					<br>{%= data[i][__("Item Code")] %}
+					
+					<br>
+					<br></td>
+			    
+
+							
+				
+			
+		{% } %}
+	</tbody>
+</table>
+<p class="text-right text-muted">Printed On {%= dateutil.str_to_user(dateutil.get_datetime_as_string()) %}</p>
+
+
