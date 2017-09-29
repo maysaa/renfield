@@ -7,29 +7,42 @@
 <table class="no-border">
 	
 	<tbody>
+		<tr>
 		{% for(var i=0, l=data.length; i<l; i++) { %}
-			<tr>
-				<td>   
+			
+				<td style="width:85px">   
 					
-					<img src={%=data[i][__("Serial_QR_Code")]%} width = "78.59px" height = "75.59px">
+					<img src={%=data[i][__("Serial_QR_Code")]%} width = "75.59px" height = "75px">
 							
 					
-					<br>{%= data[i][__("Serial Number")] %}
+					<br> {%= data[i][__("Serial Number")] %}</div>
 					<br>{%= data[i][__("Item Code")] %}
 					<br>
 					<br></td>
-				<td>
-					<img src={%=data[i][__("Serial_QR_Code")]%} width = "78.59px" height = "75.59px">					
-					<br>{%= data[i][__("Serial Number")] %}
-					<br>{%= data[i][__("Item Code")] %}
+				<td style="width:60px"> 
+				</td>
+				<td style="width:85px">   
 					
+					<img src={%=data[i][__("Serial_QR_Code")]%} width = "75.59px" height = "75px">
+							
+					
+					<br> {%= data[i][__("Serial Number")] %}</div>
+					<br>{%= data[i][__("Item Code")] %}
 					<br>
 					<br></td>
+				<td style="width:60px"> 
+				</td>				
+				{% if(i%2) { %}
+					
+					<br>  
+					
+					</tr>
+					<tr>
+
+				{% } %}
 			    
 
 							
-				
-			
 		{% } %}
 	</tbody>
 </table>
