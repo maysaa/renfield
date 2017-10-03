@@ -28,8 +28,9 @@ def execute(filters=None):
 	for rows in data: 
 
 		created_date = getdate(rows[6])
-		curr_date = getdate(filters.get("creation"))
-		if created_date == curr_date:
+		created_from = getdate(filters.get("created_from"))
+		created_to = getdate(filters.get("created_to"))
+		if ((created_date >= created_from) and (created_date <= created_to)):
 			string_qr = "http://www.barcodes4.me/barcode/qr/myfilename.png?value=" + rows[0]
 
 		
@@ -60,10 +61,10 @@ def get_columns():
 
 def get_conditions(filters):
         conditions = ""
-        if filters.get("creation"):
-		created_date = getdate(filters.get("creation"))
+        if filters.get("created_from"):
+		created_date = getdate(filters.get("created_from"))
 
-		conditions += " and sn.creation = '%s'" % frappe.db.escape(filters["creation"])
+		conditions += " and sn.creation = '%s'" % frappe.db.escape(filters["created_from"])
 
 	
         return conditions
